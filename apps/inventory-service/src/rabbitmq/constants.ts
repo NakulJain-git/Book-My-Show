@@ -1,0 +1,1 @@
+export const PROCESS_QUEUE = 'booking.process.queue';

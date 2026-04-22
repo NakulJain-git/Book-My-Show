@@ -1,0 +1,103 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: booking-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7
+    container_name: booking-redis
+    ports:
+      - '6379:6379'
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: booking-rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: booking-service
+    command: npm run start:booking-service
+    ports:
+      - '3001:3001'
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: booking_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://rabbitmq:5672
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-service
+    command: npm run start:payment-service
+    ports:
+      - '3002:3002'
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: payment_db
+      RABBITMQ_URL: amqp://rabbitmq:5672
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    command: npm run start:inventory-service
+    ports:
+      - '3003:3003'
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: inventory_db
+      RABBITMQ_URL: amqp://rabbitmq:5672
+
+  nginx:
+    image: nginx:latest
+    container_name: booking-nginx
+    ports:
+      - '8080:80'
+    volumes:
+      - ./nginx:/etc/nginx
+    depends_on:
+      - booking-service
+      - payment-service
+      - inventory-service
+
+volumes:
+  postgres_data:
