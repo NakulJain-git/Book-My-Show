@@ -14,19 +14,6 @@ export class BookingService {
   ) {}
 
   async createBooking(userId: string, showId: string, seatNumber: string) {
-    const existing = await this.bookingRepo.findOne({
-      where: {
-        showId,
-        seatNumber,
-        status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-        expiresAt: MoreThan(new Date()),
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException('Seat already booked');
-    }
-
     const lockKey = `lock:seat:${showId}:${seatNumber}`;
     const lockValue = await this.redisService.acquireLock(lockKey, 300);
 
