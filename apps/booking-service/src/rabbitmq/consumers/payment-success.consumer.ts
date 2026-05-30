@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BookingService } from '../../booking-service.service';
 import { rabbitMQ } from '../connection';
+import { PAYMENT_SUCCESS_EVENT } from '../constants';
 
 @Injectable()
 export class PaymentSuccessConsumer implements OnModuleInit {
@@ -8,7 +9,7 @@ export class PaymentSuccessConsumer implements OnModuleInit {
 
   async onModuleInit() {
     await rabbitMQ.consume(
-      'payment.success',
+      PAYMENT_SUCCESS_EVENT,
       async (msg) => {
         const event = JSON.parse(msg.content.toString());
 

@@ -2,66 +2,75 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { rabbitMQ } from '../connection';
 import { InventoryService } from '../../inventory-service.service';
 import { SeatStatus } from '../../entities/seat-inventory.entity';
+import { BOOKING_EVENTS_QUEUE } from '../constants';
+import { BookingEvent } from '../../interface/bookingEvent.interface';
 
 @Injectable()
 export class BookingEventsConsumer implements OnModuleInit {
-  constructor(private readonly inventoryService: InventoryService) {}
+
+  constructor(
+    private readonly inventoryService: InventoryService,
+  ) {}
 
   async onModuleInit() {
-    await rabbitMQ.consume('booking_events', async (msg) => {
-      if (!msg) return;
+    await rabbitMQ.consume(
+      BOOKING_EVENTS_QUEUE,
+      async (msg) => {
+        const event = this.parseEvent(msg.content.toString());
 
-      let event: any;
+        if (!event) return;
 
-      try {
-        event = JSON.parse(msg.content.toString());
-      } catch (err) {
-        console.error('[Inventory] Invalid JSON event');
-        return;
+        await this.handleEvent(event);
+      },
+    );
+  }
+
+  private parseEvent(payload: string): BookingEvent | null {
+    try {
+      const event = JSON.parse(payload) as BookingEvent;
+
+      if (!event.showId || !event.seatNumber || !event.type) {
+        console.log(`Invalid event payload: ${payload}`);
+        return null;
       }
 
-      const { type, showId, seatNumber } = event;
+      return event;
+    } catch {
+      console.log(`Invalid JSON payload: ${payload}`);
+      return null;
+    }
+  }
 
-      if (!showId || !seatNumber) {
-        console.error('[Inventory] Missing fields in event', event);
-        return;
-      }
+  private async handleEvent(event: BookingEvent): Promise<void> {
+    const seatStatusMap: Record<BookingEvent['type'], SeatStatus> = {
+      BOOKING_CREATED: SeatStatus.HELD,
+      BOOKING_CONFIRMED: SeatStatus.BOOKED,
+      BOOKING_EXPIRED: SeatStatus.AVAILABLE,
+    };
 
-      try {
-        switch (type) {
-          case 'BOOKING_CREATED':
-            await this.inventoryService.updateSeat(
-              showId,
-              seatNumber,
-              SeatStatus.HELD,
-            );
-            console.log(`[Inventory] ${seatNumber} → HELD`);
-            break;
+    const newStatus = seatStatusMap[event.type];
 
-          case 'BOOKING_CONFIRMED':
-            await this.inventoryService.updateSeat(
-              showId,
-              seatNumber,
-              SeatStatus.BOOKED,
-            );
-            console.log(`[Inventory] ${seatNumber} → BOOKED`);
-            break;
+    if (!newStatus) {
+      console.log(`Unknown event type: ${event.type}`);
+      return;
+    }
 
-          case 'BOOKING_EXPIRED':
-            await this.inventoryService.updateSeat(
-              showId,
-              seatNumber,
-              SeatStatus.AVAILABLE,
-            );
-            console.log(`[Inventory] ${seatNumber} → AVAILABLE`);
-            break;
+    try {
+      await this.inventoryService.updateSeat(
+        event.showId,
+        event.seatNumber,
+        newStatus,
+      );
 
-          default:
-            console.warn('[Inventory] Unknown event:', type);
-        }
-      } catch (err) {
-        console.error('[Inventory] Error processing event', err);
-      }
-    });
+      console.log(
+        `Seat ${event.seatNumber} → ${newStatus} (${event.type})`,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to process event ${event.type} for seat ${event.seatNumber}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
   }
 }

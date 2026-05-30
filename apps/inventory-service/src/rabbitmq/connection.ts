@@ -5,9 +5,6 @@ class RabbitMQManager {
   private channels: Map<string, amqp.Channel> = new Map();
   private isConnected = false;
 
-  private readonly URL =
-    process.env.RABBITMQ_URL || 'amqp://localhost:5672';
-
   private readonly RABBITMQ_URL =
     process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
 

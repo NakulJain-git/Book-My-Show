@@ -54,12 +54,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     console.log(`[REDIS] Releasing lock → ${key}`);
 
     const script = `
-    if redis.call("GET", KEYS[1]) == ARGV[1] then
-      return redis.call("DEL", KEYS[1])
-    else
-      return 0
-    end
-  `;
+                  if redis.call("GET", KEYS[1]) == ARGV[1] then
+                    return redis.call("DEL", KEYS[1])
+                  else
+                    return 0
+                  end
+                `;
 
     const result = await this.client.eval(script, 1, key, value);
 

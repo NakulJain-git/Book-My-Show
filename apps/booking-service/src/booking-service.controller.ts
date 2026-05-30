@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, Res, HttpStatus } from '@nestjs/common';
 import { BookingService } from './booking-service.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import type { FastifyReply } from 'fastify';

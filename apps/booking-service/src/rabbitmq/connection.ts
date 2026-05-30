@@ -1,4 +1,9 @@
 import * as amqp from 'amqplib';
+import {
+  BOOKING_EXPIRY_QUEUE,
+  BOOKING_EXPIRY_DELAY_QUEUE,
+  BOOKING_EXPIRY_EXCHANGE,
+} from './constants';
 
 class RabbitMQManager {
   private connection!: amqp.Connection;
@@ -56,7 +61,11 @@ class RabbitMQManager {
 
     const channel = await this.connection.createChannel();
 
-    await channel.assertQueue(queue, { durable: true });
+    if (queue === BOOKING_EXPIRY_QUEUE || queue === BOOKING_EXPIRY_DELAY_QUEUE) {
+      await this.setupBookingExpiry(channel);
+    } else {
+      await channel.assertQueue(queue, { durable: true });
+    }
 
     this.channels.set(queue, channel);
 
@@ -100,6 +109,31 @@ class RabbitMQManager {
       { noAck: false }
     );
   }
+
+  private async setupBookingExpiry(channel: amqp.Channel) {
+    await channel.assertExchange(
+      BOOKING_EXPIRY_EXCHANGE,
+      'direct',
+      { durable: true },
+    );
+
+    await channel.assertQueue(BOOKING_EXPIRY_QUEUE, {
+      durable: true,
+    });
+
+    await channel.bindQueue(
+      BOOKING_EXPIRY_QUEUE,
+      BOOKING_EXPIRY_EXCHANGE,
+      BOOKING_EXPIRY_QUEUE,
+    );
+
+    await channel.assertQueue(BOOKING_EXPIRY_DELAY_QUEUE, {
+      durable: true,
+      deadLetterExchange: BOOKING_EXPIRY_EXCHANGE,
+      deadLetterRoutingKey: BOOKING_EXPIRY_QUEUE,
+    });
+  }
 }
+
 
 export const rabbitMQ = new RabbitMQManager();

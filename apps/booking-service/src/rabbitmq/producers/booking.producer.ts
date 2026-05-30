@@ -1,21 +1,17 @@
 import { rabbitMQ } from '../connection';
-import { EXPIRY_QUEUE, PROCESS_QUEUE } from '../constants';
+import { BOOKING_EXPIRY_DELAY_QUEUE } from '../constants';
 
 export class BookingProducer {
   static async sendExpiryJob(
     data: { bookingId: string; showId: string; seatNumber: string },
     delayMs: number,
   ) {
-    const channel = await rabbitMQ.getChannel(EXPIRY_QUEUE);
-
-    await channel.assertQueue(PROCESS_QUEUE, { durable: true });
-
-    await channel.assertQueue(EXPIRY_QUEUE, {
-      durable: true,
-    });
+    const channel = await rabbitMQ.getChannel(
+      BOOKING_EXPIRY_DELAY_QUEUE,
+    );
 
     channel.sendToQueue(
-      EXPIRY_QUEUE,
+      BOOKING_EXPIRY_DELAY_QUEUE,
       Buffer.from(JSON.stringify(data)),
       {
         persistent: true,

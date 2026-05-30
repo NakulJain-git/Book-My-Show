@@ -1,10 +1,10 @@
 import { FastifyReply } from 'fastify';
 import {
   BadRequestException,
-    ConflictException,
-    HttpException,
-    HttpStatus,
-    NotFoundException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 
 export function handleError(error: unknown, res: FastifyReply) {
