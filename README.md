@@ -235,9 +235,6 @@ RABBITMQ_URL=amqp://rabbitmq:5672
 ✔ Eventual Consistency
 
 
-✔ CQRS-style separation (commands vs events)
-
-
 ✔ Delayed messaging for expiry logic
 
 
